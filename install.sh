@@ -20,6 +20,7 @@ STATE_HOME="${XDG_STATE_HOME:-$HOME/.local/state}"
 CACHE_HOME="${XDG_CACHE_HOME:-$HOME/.cache}"
 CONFIG_DIR="$CONFIG_HOME/nvim"
 LOCAL_BIN="$HOME/.local/bin"
+ORIG_PATH="$PATH"
 STAMP="$(date +%Y%m%d-%H%M%S)"
 
 INSTALL_DEPS=1
@@ -106,10 +107,9 @@ ensure_nvim() {
     fi
     nvim_ok || die "Neovim >= $MIN_NVIM is required but $(command -v nvim || echo nvim) is older or missing"
     ok "$(nvim --version | head -n1) ($(command -v nvim))"
-    case ":$PATH:" in
-        *":$LOCAL_BIN:"*) ;;
-        *) [ -x "$LOCAL_BIN/nvim" ] && warn "add $LOCAL_BIN to your PATH" ;;
-    esac
+    if [ "$(PATH="$ORIG_PATH" command -v nvim 2>/dev/null)" != "$(command -v nvim)" ]; then
+        warn "open a new login shell (or add $LOCAL_BIN to the front of PATH) to use this nvim"
+    fi
 }
 
 # nvim-treesitter (main branch) compiles parsers with the tree-sitter CLI.
@@ -126,6 +126,10 @@ ensure_tree_sitter() {
     if curl -fsSL "https://github.com/tree-sitter/tree-sitter/releases/latest/download/$asset" \
         | gunzip > "$LOCAL_BIN/tree-sitter"; then
         chmod +x "$LOCAL_BIN/tree-sitter"
+        if ! "$LOCAL_BIN/tree-sitter" --version >/dev/null 2>&1; then
+            rm -f "$LOCAL_BIN/tree-sitter"
+            warn "downloaded tree-sitter CLI does not run here; treesitter parsers may fail to build"
+        fi
     else
         rm -f "$LOCAL_BIN/tree-sitter"
         warn "tree-sitter CLI download failed; treesitter parsers may fail to build"
@@ -167,6 +171,8 @@ place_config() {
 install_config() {
     if [ "$FORCE" -eq 0 ] && is_this_repo; then
         log "Config already installed; updating it"
+        # lazy.nvim rewrites the lockfile on its own; the repo's copy is authoritative.
+        git -C "$CONFIG_DIR" checkout -q -- lazy-lock.json 2>/dev/null || true
         if [ -n "$(git -C "$CONFIG_DIR" status --porcelain --untracked-files=no)" ]; then
             warn "local changes in $CONFIG_DIR; backing it up and re-cloning"
             fetch_config
@@ -226,7 +232,10 @@ install_epitech_plugin() {
     mkdir -p "$(dirname "$dest")"
     cp -a "$src" "$dest"
     ok "epitech.nvim at $dest"
-    have clang-format || warn "clang-format (21+) is missing; <leader>cf on C files will fail"
+    if ! have clang-format || ! clang-format --dump-config \
+        --style="file:$dest/epitech.clang-format" >/dev/null 2>&1; then
+        warn "clang-format 21+ not available; <leader>cf on C files will fail"
+    fi
 }
 
 sync_plugins() {
