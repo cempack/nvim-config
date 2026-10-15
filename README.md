@@ -5,7 +5,17 @@ keymaps and plugin overrides. `lua/plugins/epitech-dump-arch.lua` is a managed
 integration from [epitech-dump-arch](https://github.com/cempack/epitech-dump-arch);
 its plugin code is installed separately under Neovim's data directory.
 
-To use this config on a new machine, clone this repository to
+To install Neovim, the tools this config needs and the config itself on a new
+machine (Arch/Omarchy, Ubuntu/Debian, Fedora, openSUSE or macOS), run:
+
+```sh
+bash <(wget -qO- https://raw.githubusercontent.com/cempack/nvim-config/main/install.sh)
+```
+
+Re-running it updates everything in place; an existing different config is
+moved to `~/.config/nvim.bak.<timestamp>`.
+
+To set it up by hand instead, clone this repository to
 `~/.config/nvim`, run the `epitech-dump-arch` installer to populate its managed
 plugin path, then start Neovim to install the locked LazyVim plugins.
 The Epitech updater does not update LazyVim itself.
