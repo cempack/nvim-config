@@ -2,9 +2,7 @@
 # Install Neovim and this LazyVim configuration. Safe to re-run: whatever is
 # already installed is upgraded or backed up, never silently clobbered.
 #
-# The repo is private, so cloning uses your GitHub credentials (gh or SSH):
-#   gh api repos/cempack/nvim-config/contents/install.sh -H 'Accept: application/vnd.github.raw' | bash
-#   # or, from any clone of the repo:  ./install.sh
+#   bash <(curl -fsSL https://raw.githubusercontent.com/cempack/nvim-config/main/install.sh)
 #
 # Options:
 #   --no-deps   skip system package installation (no sudo)
@@ -157,11 +155,8 @@ is_this_repo() {
 # Clone into a temp dir first so a failed clone never leaves you without a config.
 fetch_config() {
     log "Cloning $REPO_URL"
-    if have gh && gh auth status >/dev/null 2>&1 && [ -z "${NVIM_CONFIG_REPO:-}" ]; then
-        gh repo clone cempack/nvim-config "$TMP/config" -- --branch "$BRANCH" -q
-    else
-        git clone -q --branch "$BRANCH" "$REPO_URL" "$TMP/config"
-    fi || die "could not clone the config (private repo: run 'gh auth login' or set up SSH keys)"
+    git clone -q --branch "$BRANCH" "$REPO_URL" "$TMP/config" \
+        || die "could not clone $REPO_URL"
 }
 
 place_config() {
