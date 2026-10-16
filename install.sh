@@ -12,7 +12,6 @@ set -euo pipefail
 
 REPO_URL="${NVIM_CONFIG_REPO:-https://github.com/cempack/nvim-config.git}"
 BRANCH="${NVIM_CONFIG_BRANCH:-main}"
-EPITECH_URL="${EPITECH_DUMP_REPO:-https://github.com/cempack/epitech-dump-arch.git}"
 VIM_EPITECH_URL="https://github.com/Epitech/vim-epitech.git"
 MIN_NVIM="0.11.2"   # LazyVim
 MIN_TS="0.26.1"     # nvim-treesitter (main branch)
@@ -25,7 +24,10 @@ DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"
 STATE_HOME="${XDG_STATE_HOME:-$HOME/.local/state}"
 CACHE_HOME="${XDG_CACHE_HOME:-$HOME/.cache}"
 CONFIG_DIR="$CONFIG_HOME/nvim"
-EPITECH_PLUGIN="$DATA_HOME/nvim/epitech-upgrade/nvim/epitech.nvim"
+# lazy.nvim installs epitech.nvim from GitHub; older installs copied it to the
+# legacy path instead.
+EPITECH_PLUGIN="$DATA_HOME/nvim/lazy/epitech.nvim"
+EPITECH_LEGACY_PLUGIN="$DATA_HOME/nvim/epitech-upgrade/nvim/epitech.nvim"
 LOCAL_BIN="$HOME/.local/bin"
 LOCAL_OPT="$HOME/.local/opt"
 ORIG_PATH="$PATH"
@@ -385,21 +387,13 @@ EOF
     git -C "$CONFIG_DIR" update-index --skip-worktree lua/plugins/theme.lua
 }
 
-# lua/plugins/epitech-dump-arch.lua loads a plugin from the data dir, and its
-# formatter runs the Epitech Vim config. Install just those two pieces (the full
-# epitech-dump-arch installer also sets up the school toolchain).
+# lazy.nvim installs epitech.nvim itself (lua/plugins/epitech-dump-arch.lua);
+# its formatter also runs the Epitech Vim config, installed here.
 install_epitech() {
-    if [ -e "$EPITECH_PLUGIN" ] && [ ! -f "$EPITECH_PLUGIN/.epitech-dump-arch" ]; then
-        warn "$EPITECH_PLUGIN exists and is not managed by epitech-dump-arch; leaving it alone"
-    else
-        log "Installing the epitech.nvim plugin"
-        git clone -q --depth 1 "$EPITECH_URL" "$TMP/epitech"
-        [ -f "$TMP/epitech/nvim/epitech.nvim/lua/epitech/init.lua" ] \
-            || die "epitech.nvim not found in $EPITECH_URL"
-        rm -rf "$EPITECH_PLUGIN"
-        mkdir -p "$(dirname "$EPITECH_PLUGIN")"
-        cp -a "$TMP/epitech/nvim/epitech.nvim" "$EPITECH_PLUGIN"
-        ok "epitech.nvim at $EPITECH_PLUGIN"
+    if [ -f "$EPITECH_LEGACY_PLUGIN/.epitech-dump-arch" ]; then
+        rm -rf "$EPITECH_LEGACY_PLUGIN"
+        rmdir "$(dirname "$EPITECH_LEGACY_PLUGIN")" "$DATA_HOME/nvim/epitech-upgrade" 2>/dev/null || true
+        ok "removed the old bundled copy of epitech.nvim"
     fi
 
     log "Installing the Epitech Vim config"
@@ -415,7 +409,8 @@ install_epitech() {
 
 sync_plugins() {
     log "Installing locked plugins (headless)"
-    if nvim --headless "+Lazy! restore" +qa; then
+    # epitech.nvim follows its repository rather than the lockfile.
+    if nvim --headless "+Lazy! restore" +qa && nvim --headless "+Lazy! update epitech.nvim" +qa; then
         echo
         ok "plugins installed (Mason installs language servers on the first start)"
     else
@@ -450,8 +445,8 @@ ensure_lazygit
 install_config
 fix_theme
 install_epitech
+sync_plugins
 ensure_formatters
 ensure_nerd_font
-sync_plugins
 ensure_path
 log "Done. Start nvim."
