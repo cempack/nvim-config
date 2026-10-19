@@ -29,3 +29,9 @@ Omarchy machine; it will not resolve on systems without that theme path.
 
 `<leader>cf` formats C and Makefiles, `<leader>cH` inserts a filetype-aware
 Epitech header, and `<leader>cG` adds an include guard to a C header.
+
+At most 6 file buffers stay open, so the tab bar never shows more than 6 tabs:
+opening another closes the least recently used one, except buffers with unsaved
+changes, buffers shown in a window, and buffers pinned with
+`:BufferLineTogglePin`. Change the limit with `M.max` in
+`lua/config/buffer_limit.lua`.
